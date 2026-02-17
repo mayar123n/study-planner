@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منظم دراستي الاحترافي</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* === التصميم العام === */
+body {
+  font-family:'Poppins',sans-serif;
+  margin:0; padding:0;
+  text-align:center; direction:rtl;
+  transition: background 0.5s,color 0.5s;
+}
+body.light{
+  background: linear-gradient(-45deg,#ff9a9e,#fad0c4,#a1c4fd,#fbc2eb);
+  color:black;
+}
+body.dark{
+  background: linear-gradient(-45deg,#2c3e50,#34495e,#1abc9c,#16a085);
+  color:white;
+}
+.container{
+  max-width:750px;margin:25px auto;padding:25px;
+  background: rgba(255,255,255,0.95);
+  border-radius:25px; box-shadow:0 12px 35px rgba(0,0,0,0.25);
+  transition:all 0.5s,opacity 0.5s;
+  opacity:0;
+}
+.container.active{opacity:1;}
+button{
+  background: linear-gradient(90deg,#00c3ff,#0072ff);
+  color:white; border:none; border-radius:15px;
+  padding:12px 25px; font-weight:bold; cursor:pointer;
+  transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;
+}
+button:hover{transform: scale(1.1);box-shadow:0 10px 30px rgba(0,0,0,0.4);filter: brightness(1.2);}
+.navbar{display:flex;justify-content:center;gap:15px;margin-bottom:15px;}
+input,textarea,select{padding:8px 10px;margin:5px 0;width:80%;border-radius:8px;border:1px solid #ccc;}
+.board{display:grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-top:20px;}
+.task{width:100%;padding:10px;border-radius:15px;font-weight:600;text-align:center;color:white;transition:transform 0.3s,box-shadow 0.3s;cursor:pointer;}
+.task:hover{transform: scale(1.05); box-shadow:0 10px 25px rgba(0,0,0,0.3);}
+.task.new{background: linear-gradient(135deg,#ff6f91,#ff9a9e);}
+.task.inProgress{background: linear-gradient(135deg,#ffc75f,#ffb347);}
+.task.done{background: linear-gradient(135deg,#43cea2,#185a9d);}
+.progress-container{width:90%; background:#eee; border-radius:12px; margin:auto; height:30px; margin-bottom:15px;}
+.progress-bar{height:30px; width:0; background:linear-gradient(90deg,#00c6ff,#0072ff); border-radius:12px; text-align:center; color:white; line-height:30px; font-weight:bold; transition: width 0.6s ease;}
+.chart-container{width:90%; margin:auto; margin-top:20px;}
+#confettiCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;}
+</style>
+</head>
+<body class="light">
+
+<!-- Confetti canvas -->
+<canvas id="confettiCanvas"></canvas>
+
+<!-- Intro -->
+<div id="pageIntro" class="container active">
+  <h1>🎉 مرحباً بك في منظم دراستي الاحترافي!</h1>
+  <p>خطط يومك، تابع مهامك، وحقق أهدافك بطريقة ممتعة!</p>
+  <h3>مميزات التطبيق:</h3>
+  <ul style="text-align:right;">
+    <li>إضافة المهام والمشاريع كمربعات صغيرة</li>
+    <li>فلترة وبحث عن المهام</li>
+    <li>شريط تقدم + رسم بياني</li>
+    <li>تغيير الثيم ليلي / نهاري</li>
+    <li>Confetti عند إكمال المهمة 🎉</li>
+  </ul>
+  <div class="navbar">
+    <button onclick="showPage('pageMenu')">التالي →</button>
+  </div>
+</div>
+
+<!-- خيارات -->
+<div id="pageMenu" class="container">
+  <h2>اختر أين تريد الذهاب</h2>
+  <div class="navbar">
+    <button onclick="showPage('pageIntro')">← السابق</button>
+    <button onclick="showPage('pageTasks')">المهام / المشاريع</button>
+    <button onclick="showPage('pageStats')">الإحصائيات</button>
+    <button onclick="toggleTheme()">🌙 / ☀️ الثيم</button>
+  </div>
+</div>
+
+<!-- المهام / المشاريع -->
+<div id="pageTasks" class="container">
+  <h2>📋 لوحة المهام</h2>
+  <input id="searchTask" placeholder="ابحث عن مهمة..." oninput="renderTasks()"><br>
+  <select id="filterStatus" onchange="renderTasks()">
+    <option value="">الكل</option>
+    <option value="new">مهام جديدة</option>
+    <option value="inProgress">قيد التنفيذ</option>
+    <option value="done">منفذة</option>
+  </select>
+  <div class="board" id="boardTasks"></div>
+  <h2>➕ إضافة مهمة / مشروع</h2>
+  <input id="taskInput" placeholder="اكتب المهمة..."><br>
+  <textarea id="description" placeholder="اكتب وصف المهمة..." rows="2"></textarea><br>
+  <select id="subject">
+    <option value="new">📐 رياضيات</option>
+    <option value="inProgress">📘 انجليزي</option>
+    <option value="done">🔬 علوم</option>
+    <option value="new">💻 حاسب</option>
+  </select><br>
+  <input type="date" id="dateInput"><br>
+  <button onclick="addTask()">إضافة مهمة ✨</button>
+  <div class="navbar">
+    <button onclick="showPage('pageMenu')">← السابق</button>
+    <button onclick="showPage('pageStats')">التالي →</button>
+  </div>
+</div>
+
+<!-- الإحصائيات -->
+<div id="pageStats" class="container">
+  <h2>📊 إحصائيات المهام</h2>
+  <div class="progress-container"><div class="progress-bar" id="progressBar">0%</div></div>
+  <div class="chart-container"><canvas id="taskChart"></canvas></div>
+  <div class="navbar">
+    <button onclick="showPage('pageTasks')">← السابق</button>
+    <button onclick="showPage('pageMenu')">الصفحة الرئيسية</button>
+  </div>
+</div>
+
+<script>
+// === التنقل بين الصفحات ===
+function showPage(id){
+  document.querySelectorAll('.container').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// === المهام ===
+let tasks = JSON.parse(localStorage.getItem("tasks"))||[];
+
+function saveTasks(){localStorage.setItem("tasks",JSON.stringify(tasks));}
+
+function renderTasks(){
+  let board = document.getElementById("boardTasks");
+  board.innerHTML="";
+  let search = document.getElementById("searchTask").value.toLowerCase();
+  let filter = document.getElementById("filterStatus").value;
+
+  tasks.forEach((task,index)=>{
+    if(search && !task.text.toLowerCase().includes(search)) return;
+    if(filter && task.status!==filter) return;
+    let div = document.createElement("div");
+    div.className = "task "+task.status;
+    div.innerHTML=`<b>${task.text}</b><br>${task.description?task.description+"<br>":""}${task.subjectName}<br>
+    <button onclick="moveTask(${index})">➡️ نقل</button>
+    <button onclick="deleteTask(${index})">❌ حذف</button>`;
+    board.appendChild(div);
+  });
+  updateProgress();
+  updateChart();
+}
+
+function addTask(){
+  let input = document.getElementById("taskInput").value;
+  let desc = document.getElementById("description").value;
+  let status = document.getElementById("subject").value;
+  let subjectName = document.getElementById("subject").selectedOptions[0].text;
+  if(input=="") return alert("اكتب مهمة أولاً!");
+  tasks.push({text:input,description:desc,status,subjectName});
+  saveTasks(); renderTasks();
+  document.getElementById("taskInput").value="";
+  document.getElementById("description").value="";
+}
+
+function moveTask(index){
+  if(tasks[index].status=="new") tasks[index].status="inProgress";
+  else if(tasks[index].status=="inProgress") tasks[index].status="done";
+  else tasks[index].status="new";
+  saveTasks(); renderTasks();
+  if(tasks[index].status=="done") launchConfetti();
+}
+
+function deleteTask(index){tasks.splice(index,1); saveTasks(); renderTasks();}
+
+function updateProgress(){
+  let bar=document.getElementById("progressBar");
+  if(!bar) return;
+  let doneCount = tasks.filter(t=>t.status=="done").length;
+  let percent = tasks.length?Math.round((doneCount/tasks.length)*100):0;
+  bar.style.width = percent+"%";
+  bar.innerText = percent+"%";
+}
+
+// === Chart ===
+let ctx = document.getElementById('taskChart')?.getContext('2d');
+let chart;
+function updateChart(){
+  if(!ctx) return;
+  let statusCounts={new:0,inProgress:0,done:0};
+  tasks.forEach(t=>statusCounts[t.status]++);
+  let labels = ["مهام جديدة","قيد التنفيذ","منفذة"];
+  let data = [statusCounts.new,statusCounts.inProgress,statusCounts.done];
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'عدد المهام',data,backgroundColor:['#ff6f91','#ffc75f','#43cea2']}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+  });
+}
+
+// === الثيم ===
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+  document.body.classList.toggle("light");
+}
+
+// === Confetti ===
+const confettiCanvas = document.getElementById('confettiCanvas');
+const confettiCtx = confettiCanvas.getContext('2d');
+confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight;
+let confettis = [];
+
+function launchConfetti(){
+  for(let i=0;i<100;i++){
+    confettis.push({
+      x:Math.random()*confettiCanvas.width,
+      y:Math.random()*confettiCanvas.height,
+      r:Math.random()*6+4,
+      dx:(Math.random()-0.5)*5,
+      dy:Math.random()*-7-3,
+      color:`hsl(${Math.random()*360},100%,50%)`
+    });
+  }
+  requestAnimationFrame(updateConfetti);
+}
+
+function updateConfetti(){
+  confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  confettis.forEach((c,i)=>{
+    c.x+=c.dx;
+    c.y+=c.dy;
+    c.dy+=0.2;
+    confettiCtx.fillStyle=c.color;
+    confettiCtx.beginPath();
+    confettiCtx.arc(c.x,c.y,c.r,0,Math.PI*2);
+    confettiCtx.fill();
+    if(c.y>confettiCanvas.height){ confettis.splice(i,1); }
+  });
+  if(confettis.length>0) requestAnimationFrame(updateConfetti);
+}
+
+document.addEventListener("DOMContentLoaded",renderTasks);
+</script>
+</body>
+</html>
